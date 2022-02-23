@@ -1,0 +1,81 @@
+#set working directory
+path <- "~/R-Projects/LinearRegression/first"
+setwd(path)
+
+#import library and dataset
+library (data.table)
+library (plyr)
+library (stringr)
+train <- fread("train.csv",na.strings = c("",NA,"NA"))
+test <- fread("test.csv",na.strings = c("",NA,"NA"))
+
+str(train)
+colSums(is.na(train))
+colSums(is.na(test))
+summary(train$Fare)
+summary(test$Fare)
+
+
+#Data pre-processing
+train[,.N/nrow(train),Pclass]
+test[,.N/nrow(test),Pclass]
+
+train [,.N/nrow(train),Parch]
+test [,.N/nrow(test),Parch]
+
+alldata <- rbind(train,test,fill=TRUE)
+
+alldata [,title := strsplit(Name,split = "[,.]")]
+alldata [,title := ldply(.data = title,.fun = function(x) x[2])]
+alldata [,title := str_trim(title,side = "left")]
+
+alldata [,title := replace(title, which(title %in% c("Capt","Col","Don","Jonkheer","Major","Rev","Sir")), "Mr"),by=title]
+alldata [,title := replace(title, which(title %in% c("Lady","Mlle","Mme","Ms","the Countess","Dr","Dona")),"Mrs"),by=title]
+
+alldata [,abs_col := strsplit(x = Ticket,split = " ")]
+alldata [,abs_col := ldply(.data = abs_col,.fun = function(x)length(x))]
+alldata [,abs_col := ifelse(abs_col > 1,1,0)]
+
+for(i in "Age")
+        set(alldata,i = which(is.na(alldata[[i]])),j=i,value = median(alldata$Age,na.rm = T))
+alldata <- alldata[!is.na(Embarked)]
+for(i in "Fare")
+      set(alldata,i = which(is.na(alldata[[i]])),j=i,value = median(alldata$Fare,na.rm = T))
+alldata [is.na(Cabin),Cabin := "Miss"]
+alldata$Fare <- log(alldata$Fare + 1)
+alldata [Parch == 9L, Parch := 0]
+train <- alldata[!(is.na(Survived))]
+train [,Survived := as.factor(Survived)]
+
+test <- alldata[is.na(Survived)]
+test [,Survived := NULL]
+
+
+#Modeling
+model <- glm(Survived ~ ., family = binomial(link = 'logit'), data = train[,-c("PassengerId","Name","Ticket")])
+summary(model)
+anova(model, test = 'Chisq')
+
+#AIC is reduced eliminating some predictors
+model2 <- glm(Survived ~ Pclass + Sex + Age + SibSp + Fare + title, data = train,family = binomial(link="logit"))
+summary(model2)
+
+anova(model,model2,test = "Chisq")
+
+library(caret)
+split <- createDataPartition(y = train$Survived,p = 0.6,list = FALSE)
+
+new_train <- train[split] 
+new_test <- train[-split]
+
+#Last model select best predictors and also delete from train dataset useless attributes
+log_model <- glm(Survived ~ Pclass + Sex + Age + SibSp + Fare + title, data = new_train[,-c("PassengerId","Name","Ticket")],family = binomial(link="logit"))
+log_predict <- predict(log_model,newdata = new_test,type = "response")
+log_predict <- ifelse(log_predict > 0.5,1,0)
+
+#Plot Results
+library(ROCR) 
+library(Metrics)
+pr <- prediction(log_predict,new_test$Survived)
+perf <- performance(pr,measure = "tpr",x.measure = "fpr") 
+plot(perf) > auc(new_test$Survived,log_predict)
