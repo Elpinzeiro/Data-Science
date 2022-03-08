@@ -7,6 +7,11 @@ Some examples of linear regression implementation with increasing complexity.
 
 #### Linear Regression : [Linear Regression](https://github.com/Elpinzeiro/R-Projects/tree/main/LinearRegression)
 
+## Logistic Regression
+Some examples of logistic regression implementation with increasing complexity.
+
+#### Logistic Regression : [Linear Regression](https://github.com/Elpinzeiro/R-Projects/tree/main/LogisticRegression)
+
 ## XGBoost
 
 This powerful algorithm can solve different types of problems.
