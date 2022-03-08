@@ -1,6 +1,6 @@
 # R-Projects
 
-Some Practical examples of implementation of the most important ML algorithms in R Language.
+Some Practical examples of implementation of the most important ML algorithms in R Language, and related paper explaining details.
 
 ## Linear Regression
 Some examples of linear regression implementation with increasing complexity.
